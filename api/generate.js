@@ -1,4 +1,3 @@
-// @vercel-edge
 import { Redis } from '@upstash/redis';
 
 const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages';
@@ -27,39 +26,30 @@ const PROMPTS = {
   campaign: (tone) => `${TONE_INSTRUCTIONS[tone]}\n\nLook at the product image(s) carefully. Write a complete campaign concept:\n1. Campaign name and tagline\n2. The Big Idea (2-3 sentences)\n3. Target audience (vivid description)\n4. Creative direction (mood, colours, aesthetic)\n5. Hero video concept (30-60 second outline)\n6. 3 social content series ideas\n7. Creator/influencer strategy (3 tiers)\n8. Launch timeline (6 weeks)\n9. 5 tagline variations\n10. 3 key success metrics`,
 };
 
-export default async function handler(req) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 });
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const ip = req.headers.get('x-forwarded-for')
-    || req.headers.get('cf-connecting-ip')
+  const ip = req.headers['x-forwarded-for']
+    || req.headers['cf-connecting-ip']
     || 'unknown';
 
   const key = `kk:${ip}`;
   const count = (await redis.get(key)) || 0;
 
   if (Number(count) >= LIMIT) {
-    return new Response(
-      JSON.stringify({ limitReached: true }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return res.status(200).json({ limitReached: true });
   }
 
-  const { section, tone, images } = await req.json();
+  const { section, tone, images } = req.body;
 
   if (!section || !tone || !images?.length) {
-    return new Response(
-      JSON.stringify({ error: 'Missing required fields' }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } }
-    );
+    return res.status(400).json({ error: 'Missing required fields' });
   }
 
   if (!PROMPTS[section] || !TONE_INSTRUCTIONS[tone]) {
-    return new Response(
-      JSON.stringify({ error: 'Invalid section or tone' }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } }
-    );
+    return res.status(400).json({ error: 'Invalid section or tone' });
   }
 
   const imageBlocks = images.map(img => ({
@@ -79,33 +69,32 @@ export default async function handler(req) {
     }]
   };
 
-  const anthropicRes = await fetch(ANTHROPIC_API, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify(anthropicBody)
-  });
+  try {
+    const anthropicRes = await fetch(ANTHROPIC_API, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify(anthropicBody)
+    });
 
-  const anthropicData = await anthropicRes.json();
+    const anthropicData = await anthropicRes.json();
 
-  if (anthropicData.error) {
-    return new Response(
-      JSON.stringify({ error: anthropicData.error.message }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    if (anthropicData.error) {
+      return res.status(500).json({ error: anthropicData.error.message });
+    }
+
+    const text = anthropicData.content
+      ?.map(b => b.text || '').join('')
+      || 'Could not generate content.';
+
+    await redis.set(key, Number(count) + 1, { ex: 86400 });
+
+    return res.status(200).json({ text });
+
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
   }
-
-  const text = anthropicData.content
-    ?.map(b => b.text || '').join('')
-    || 'Could not generate content.';
-
-  await redis.set(key, Number(count) + 1, { ex: 86400 });
-
-  return new Response(
-    JSON.stringify({ text }),
-    { status: 200, headers: { 'Content-Type': 'application/json' } }
-  );
 }

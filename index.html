@@ -95,7 +95,7 @@ header{
   display:flex;align-items:center;justify-content:center;
   font-size:13px;flex-shrink:0;
 }
-.section-title{font-size:12px;font-weight:700;color:var(--text-muted);letter-spacing:.1em;text-transform:uppercase;font-family:'JetBrains Mono',monospace;}
+.section-title{font-size:16px;font-weight:700;color:var(--text-primary);letter-spacing:.08em;text-transform:uppercase;font-family:'JetBrains Mono',monospace;}
 
 /* ── IMAGE UPLOAD GRID ── */
 .upload-section{padding:0 20px 0;}
@@ -174,16 +174,22 @@ header{
 .section-divider{height:1px;background:var(--navy-border);margin:16px 20px 0;}
 
 /* ── PROGRESSIVE REVEAL ── */
+@keyframes sectionFlash{
+  0%{box-shadow:0 0 0 0 var(--blue-glow);}
+  50%{box-shadow:0 0 40px 8px var(--blue-glow);}
+  100%{box-shadow:0 0 0 0 var(--blue-glow);}
+}
 .reveal-section{
   opacity:0;
-  transform:translateY(24px);
-  transition:opacity 400ms ease,transform 400ms ease;
+  transform:translateY(40px) scale(0.98);
+  transition:opacity 500ms cubic-bezier(0.22,1,0.36,1),transform 500ms cubic-bezier(0.22,1,0.36,1);
   pointer-events:none;
 }
 .reveal-section.revealed{
   opacity:1;
-  transform:translateY(0);
+  transform:translateY(0) scale(1);
   pointer-events:all;
+  animation:sectionFlash 600ms ease-out forwards;
 }
 .reveal-section.hidden-stage{
   display:none;
@@ -224,9 +230,9 @@ header{
   margin:0 auto 10px;transition:all .2s;
 }
 .tone-emoji-wrap{font-size:20px;margin-bottom:7px;display:block;}
-.tone-name{font-size:12px;font-weight:700;color:var(--text-muted);letter-spacing:.02em;transition:color .2s;display:block;}
-.tone-desc{font-size:10px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;margin-top:3px;line-height:1.4;}
-.tone-card.selected .tone-desc{color:var(--text-muted);}
+.tone-name{font-size:15px;font-weight:700;color:var(--text-primary);letter-spacing:.02em;transition:color .2s;display:block;}
+.tone-desc{font-size:12px;color:var(--text-secondary);font-family:'JetBrains Mono',monospace;margin-top:3px;line-height:1.4;}
+.tone-card.selected .tone-desc{color:var(--text-secondary);}
 
 /* Content type cards */
 .content-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 20px 20px;}
@@ -255,9 +261,9 @@ header{
 .content-card.selected .content-check svg{opacity:1;}
 
 .content-emoji-wrap{font-size:20px;margin-bottom:7px;display:block;}
-.content-name{font-size:12px;font-weight:700;color:var(--text-muted);letter-spacing:.02em;transition:color .2s;display:block;}
+.content-name{font-size:15px;font-weight:700;color:var(--text-primary);letter-spacing:.02em;transition:color .2s;display:block;}
 .content-card.selected .content-name{color:var(--blue-bright);}
-.content-sub{font-size:10px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;margin-top:3px;line-height:1.4;}
+.content-sub{font-size:12px;color:var(--text-secondary);font-family:'JetBrains Mono',monospace;margin-top:3px;line-height:1.4;}
 .content-card.selected .content-sub{color:var(--text-secondary);}
 
 /* ── GENERATE BUTTON ── */
@@ -611,11 +617,23 @@ let selectedContent = new Set();
 let generatedContent = {};
 
 // ── PROGRESSIVE REVEAL ─────────────────────────────────────────
-function revealSection(el) {
-  el.classList.remove('hidden-stage');
+function revealSection(sectionEl) {
+  sectionEl.classList.remove('hidden-stage');
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      el.classList.add('revealed');
+      sectionEl.classList.add('revealed');
+      const cards = sectionEl.querySelectorAll('.tone-card, .content-card');
+      cards.forEach((card, i) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        card.style.transition = `opacity 400ms ease ${i * 80}ms, transform 400ms ease ${i * 80}ms`;
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            card.style.opacity = '';
+            card.style.transform = '';
+          }, 50);
+        });
+      });
     });
   });
 }
