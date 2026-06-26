@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<title>Koppie-Kat — AI Copy Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  --navy-deep:#0f0a06;
+  --navy-dark:#1a1008;
+  --navy-mid:#1f140a;
+  --navy-panel:#261a0d;
+  --navy-card:#2e1f10;
+  --navy-border:#3d2a15;
+  --navy-hover:#4a3320;
+  --blue-bright:#f97316;
+  --blue-light:#fb923c;
+  --blue-glow:#f9731633;
+  --blue-subtle:#f9731615;
+  --accent-gold:#fbbf24;
+  --accent-pink:#ef4444;
+  --text-primary:#fef3e2;
+  --text-secondary:#c4956a;
+  --text-muted:#7a5535;
+  --text-dim:#4a3020;
+  --white:#ffffff;
+  --success:#22c55e;
+}
+
+html,body{min-height:100%;background:var(--navy-deep);color:var(--text-primary);font-family:'Outfit',sans-serif;}
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-thumb{background:var(--navy-border);border-radius:99px;}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+@keyframes popIn{0%{opacity:0;transform:scale(.92)}100%{opacity:1;transform:scale(1)}}
+@keyframes slideDown{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes glowPulse{0%,100%{box-shadow:0 0 20px var(--blue-glow)}50%{box-shadow:0 0 40px var(--blue-glow),0 0 60px #f9731622}}
+
+/* ── GRID BACKGROUND ── */
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:
+    linear-gradient(var(--navy-border) 1px,transparent 1px),
+    linear-gradient(90deg,var(--navy-border) 1px,transparent 1px);
+  background-size:40px 40px;
+  opacity:.25;pointer-events:none;z-index:0;
+}
+body::after{
+  content:'';position:fixed;inset:0;
+  background:radial-gradient(ellipse 80% 50% at 50% -10%,#f9731618,transparent);
+  pointer-events:none;z-index:0;
+}
+
+/* ── MAIN APP ── */
+#app{display:flex;flex-direction:column;min-height:100dvh;position:relative;z-index:1;padding-bottom:60px;}
+
+/* ── HEADER ── */
+header{
+  padding:0 20px;height:60px;
+  border-bottom:1px solid var(--navy-border);
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;
+  background:rgba(15,10,6,.92);
+  backdrop-filter:blur(16px);
+  z-index:10;
+}
+.header-brand{display:flex;align-items:center;gap:12px;}
+.header-logo-mark{
+  width:34px;height:34px;border-radius:9px;
+  background:var(--navy-mid);
+  border:1px solid var(--navy-border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;
+  box-shadow:0 0 14px var(--blue-glow);
+}
+.header-name{font-size:17px;font-weight:800;color:var(--white);letter-spacing:-.02em;}
+.header-name span{color:var(--blue-bright);}
+.header-badge{font-size:9px;font-weight:600;color:var(--blue-bright);background:var(--blue-subtle);border:1px solid var(--blue-bright)33;border-radius:4px;padding:2px 7px;letter-spacing:.06em;font-family:'JetBrains Mono',monospace;margin-left:4px;}
+
+/* ── SECTION HEADERS ── */
+.section-header{
+  display:flex;align-items:center;gap:10px;
+  padding:20px 20px 12px;
+  margin-top:8px;
+}
+.section-icon{
+  width:28px;height:28px;border-radius:7px;
+  background:var(--blue-subtle);
+  border:1px solid var(--blue-bright)22;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;flex-shrink:0;
+}
+.section-title{font-size:12px;font-weight:700;color:var(--text-muted);letter-spacing:.1em;text-transform:uppercase;font-family:'JetBrains Mono',monospace;}
+
+/* ── IMAGE UPLOAD GRID ── */
+.upload-section{padding:0 20px 0;}
+.image-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+
+.img-slot{
+  position:relative;
+  min-height:160px;
+  height:auto;
+  aspect-ratio:1;
+  border-radius:14px;
+  border:1px solid var(--navy-border);
+  background:var(--navy-panel);
+  cursor:pointer;transition:all .25s;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;
+}
+.img-slot.has-image{
+  aspect-ratio:unset;
+  height:auto;
+  border-style:solid;border-color:var(--navy-border);cursor:default;
+}
+.img-slot:hover{border-color:var(--blue-bright)55;background:var(--blue-subtle);}
+.img-slot.dragover{border-color:var(--blue-bright);background:var(--blue-glow);animation:glowPulse 1.5s ease infinite;}
+.img-slot input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.img-slot.has-image input[type=file]{display:none;}
+
+.slot-plus{
+  width:32px;height:32px;border-radius:8px;
+  border:1.5px dashed var(--text-dim);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--text-dim);font-size:18px;font-weight:300;
+  transition:all .2s;
+}
+.img-slot:hover .slot-plus{border-color:var(--blue-bright)88;color:var(--blue-bright)88;}
+.slot-label{font-size:10px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;letter-spacing:.04em;}
+.img-slot:hover .slot-label{color:var(--blue-bright)66;}
+
+.slot-preview{
+  width:100%;
+  height:auto;
+  max-height:100%;
+  object-fit:contain;
+  border-radius:10px;
+  display:none;
+  padding:6px;
+}
+.slot-preview.visible{display:block;}
+
+.slot-remove{
+  position:absolute;top:7px;right:7px;
+  width:24px;height:24px;border-radius:6px;
+  background:rgba(6,13,26,.85);
+  border:1px solid var(--navy-border);
+  color:var(--text-muted);font-size:13px;
+  cursor:pointer;display:none;align-items:center;justify-content:center;
+  backdrop-filter:blur(8px);line-height:1;transition:all .2s;z-index:2;
+  font-weight:300;
+}
+.slot-remove:hover{background:#ef444420;border-color:#ef444450;color:#ef4444;}
+.img-slot.has-image .slot-remove{display:flex;}
+
+.slot-num{
+  position:absolute;bottom:7px;left:9px;
+  font-size:10px;color:var(--text-dim);
+  font-family:'JetBrains Mono',monospace;font-weight:500;
+}
+
+.img-count-note{
+  font-size:11px;color:var(--text-dim);
+  font-family:'JetBrains Mono',monospace;
+  text-align:center;margin-top:10px;padding-bottom:4px;
+}
+.img-count-note span{color:var(--blue-bright);}
+
+/* ── DIVIDER ── */
+.section-divider{height:1px;background:var(--navy-border);margin:16px 20px 0;}
+
+/* ── PROGRESSIVE REVEAL ── */
+.reveal-section{
+  opacity:0;
+  transform:translateY(24px);
+  transition:opacity 400ms ease,transform 400ms ease;
+  pointer-events:none;
+}
+.reveal-section.revealed{
+  opacity:1;
+  transform:translateY(0);
+  pointer-events:all;
+}
+.reveal-section.hidden-stage{
+  display:none;
+}
+
+/* ── FILTER SECTIONS ── */
+.filter-section{padding:0 20px;}
+.tone-section{padding:0;}
+.content-type-section{padding:0;}
+
+/* Voice Tone */
+.tone-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px;padding:0 20px;}
+.tone-card{
+  position:relative;border-radius:12px;
+  border:1px solid var(--navy-border);
+  background:var(--navy-panel);
+  padding:28px 10px 26px;cursor:pointer;
+  transition:all .2s;text-align:center;overflow:hidden;
+}
+.tone-card:hover{border-color:var(--navy-hover);}
+.tone-card.selected{background:var(--navy-card);}
+
+.tone-card.tone-neutral.selected{border-color:var(--blue-bright)55;box-shadow:0 0 20px var(--blue-glow);}
+.tone-card.tone-neutral.selected .tone-name{color:var(--blue-bright);}
+.tone-card.tone-neutral.selected .tone-indicator{background:var(--blue-bright);}
+
+.tone-card.tone-highend.selected{border-color:var(--accent-gold)55;box-shadow:0 0 20px #c9a96e22;}
+.tone-card.tone-highend.selected .tone-name{color:var(--accent-gold);}
+.tone-card.tone-highend.selected .tone-indicator{background:var(--accent-gold);}
+
+.tone-card.tone-fun.selected{border-color:var(--accent-pink)55;box-shadow:0 0 20px #ff4d8d22;}
+.tone-card.tone-fun.selected .tone-name{color:var(--accent-pink);}
+.tone-card.tone-fun.selected .tone-indicator{background:var(--accent-pink);}
+
+.tone-indicator{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--text-dim);
+  margin:0 auto 10px;transition:all .2s;
+}
+.tone-emoji-wrap{font-size:20px;margin-bottom:7px;display:block;}
+.tone-name{font-size:12px;font-weight:700;color:var(--text-muted);letter-spacing:.02em;transition:color .2s;display:block;}
+.tone-desc{font-size:10px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;margin-top:3px;line-height:1.4;}
+.tone-card.selected .tone-desc{color:var(--text-muted);}
+
+/* Content type cards */
+.content-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 20px 20px;}
+.content-card{
+  position:relative;border-radius:12px;
+  border:1px solid var(--navy-border);
+  background:var(--navy-panel);
+  padding:28px 10px 26px;cursor:pointer;
+  transition:all .2s;text-align:center;overflow:hidden;user-select:none;
+}
+.content-card:hover{border-color:var(--navy-hover);}
+.content-card.selected{
+  border-color:var(--blue-bright)55;
+  background:var(--navy-card);
+  box-shadow:0 0 20px var(--blue-glow);
+}
+
+.content-check{
+  position:absolute;top:9px;right:9px;
+  width:16px;height:16px;border-radius:4px;
+  background:var(--navy-dark);border:1.5px solid var(--navy-border);
+  display:flex;align-items:center;justify-content:center;transition:all .2s;
+}
+.content-card.selected .content-check{background:var(--blue-bright);border-color:var(--blue-bright);}
+.content-check svg{width:8px;height:8px;stroke:#fff;opacity:0;transition:opacity .15s;}
+.content-card.selected .content-check svg{opacity:1;}
+
+.content-emoji-wrap{font-size:20px;margin-bottom:7px;display:block;}
+.content-name{font-size:12px;font-weight:700;color:var(--text-muted);letter-spacing:.02em;transition:color .2s;display:block;}
+.content-card.selected .content-name{color:var(--blue-bright);}
+.content-sub{font-size:10px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;margin-top:3px;line-height:1.4;}
+.content-card.selected .content-sub{color:var(--text-secondary);}
+
+/* ── GENERATE BUTTON ── */
+#letsgo-wrap{padding:20px;}
+#letsgo-btn{
+  width:100%;padding:17px;border-radius:12px;border:none;
+  background:var(--blue-bright);
+  color:#fff;font-size:15px;font-weight:700;
+  font-family:'Outfit',sans-serif;letter-spacing:.04em;
+  cursor:pointer;
+  box-shadow:0 4px 24px var(--blue-glow);
+  transition:all .2s;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  position:relative;overflow:hidden;
+}
+#letsgo-btn::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,#fff1,transparent);
+  pointer-events:none;
+}
+#letsgo-btn:hover{background:#ea6a0a;transform:translateY(-1px);box-shadow:0 8px 32px var(--blue-glow);}
+#letsgo-btn:active{transform:translateY(0);}
+#letsgo-btn:disabled{
+  background:var(--navy-mid);color:var(--text-dim);
+  box-shadow:none;cursor:not-allowed;transform:none;
+  border:1px solid var(--navy-border);
+}
+#letsgo-btn.loading{background:var(--blue-bright);}
+.btn-spinner{width:17px;height:17px;border:2px solid #ffffff44;border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:none;flex-shrink:0;}
+#letsgo-btn.loading .btn-spinner{display:block;}
+#letsgo-btn.loading .btn-label{opacity:.7;}
+
+/* ── LIMIT WALL ── */
+#limit-wall{
+  display:none;
+  position:fixed;inset:0;
+  background:rgba(15,10,6,.95);
+  z-index:50;
+  align-items:center;justify-content:center;
+  padding:24px;
+  backdrop-filter:blur(8px);
+}
+#limit-wall.visible{display:flex;}
+.limit-card{
+  width:100%;max-width:420px;
+  background:var(--navy-panel);
+  border:1px solid var(--navy-border);
+  border-radius:20px;
+  padding:40px 32px;
+  text-align:center;
+  box-shadow:0 0 80px #f9731618,0 24px 48px #00000066;
+  animation:fadeUp .4s ease-out;
+}
+.limit-icon{font-size:40px;margin-bottom:20px;display:block;}
+.limit-heading{font-size:22px;font-weight:800;color:var(--text-primary);letter-spacing:-.02em;margin-bottom:10px;}
+.limit-sub{font-size:13px;color:var(--blue-bright);font-family:'JetBrains Mono',monospace;margin-bottom:20px;letter-spacing:.04em;}
+.limit-body{font-size:13.5px;color:var(--text-secondary);line-height:1.8;margin-bottom:28px;}
+.limit-cta{
+  display:inline-block;
+  background:var(--blue-bright);
+  color:#fff;font-size:14px;font-weight:700;
+  font-family:'Outfit',sans-serif;letter-spacing:.04em;
+  padding:14px 28px;border-radius:10px;
+  text-decoration:none;
+  box-shadow:0 4px 24px var(--blue-glow);
+  transition:all .2s;
+}
+.limit-cta:hover{background:#ea6a0a;transform:translateY(-1px);}
+
+/* ── EMPTY STATE ── */
+#empty-state{
+  text-align:center;padding:32px 24px 16px;
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+}
+.empty-graphic{
+  width:72px;height:72px;border-radius:18px;
+  background:var(--navy-panel);border:1px solid var(--navy-border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:30px;margin:0 auto 20px;
+  box-shadow:0 0 32px var(--blue-glow);
+}
+#empty-state h2{font-size:22px;font-weight:800;color:var(--text-primary);margin-bottom:10px;letter-spacing:-.02em;}
+#empty-state p{font-size:13px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;line-height:1.7;}
+
+/* ── RESULTS ── */
+#results{padding:0 20px 48px;display:none;flex-direction:column;gap:16px;animation:fadeUp .4s ease-out;}
+#results.visible{display:flex;}
+
+/* Tab nav */
+#tab-nav{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;}
+#tab-nav::-webkit-scrollbar{display:none;}
+.tab-btn{
+  flex-shrink:0;padding:8px 16px;border-radius:8px;
+  border:1px solid var(--navy-border);
+  background:var(--navy-panel);
+  color:var(--text-muted);font-size:12px;font-weight:600;
+  font-family:'Outfit',sans-serif;cursor:pointer;
+  transition:all .2s;white-space:nowrap;
+}
+.tab-btn:hover{border-color:var(--navy-hover);color:var(--text-secondary);}
+.tab-btn.active{
+  background:var(--blue-bright);border-color:var(--blue-bright);
+  color:#fff;box-shadow:0 2px 16px var(--blue-glow);
+}
+
+/* Content panels */
+.content-panel{display:none;}
+.content-panel.active{display:flex;flex-direction:column;gap:12px;animation:fadeUp .3s ease-out;}
+
+.copy-card{
+  background:var(--navy-panel);
+  border:1px solid var(--navy-border);
+  border-radius:14px;padding:20px;
+  position:relative;
+}
+.copy-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.copy-card-label{
+  font-size:10px;font-weight:700;color:var(--blue-bright);
+  font-family:'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;
+  display:flex;align-items:center;gap:8px;
+}
+.tone-badge{
+  display:inline-block;font-size:9px;padding:2px 8px;border-radius:4px;
+  font-family:'JetBrains Mono',monospace;letter-spacing:.06em;font-weight:500;
+}
+.tone-badge.badge-neutral{color:var(--blue-bright);background:var(--blue-subtle);border:1px solid var(--blue-bright)22;}
+.tone-badge.badge-highend{color:var(--accent-gold);background:#c9a96e11;border:1px solid #c9a96e22;}
+.tone-badge.badge-fun{color:var(--accent-pink);background:#ff4d8d11;border:1px solid #ff4d8d22;}
+
+.copy-card-content{
+  font-size:12.5px;color:var(--text-secondary);
+  line-height:1.8;white-space:pre-wrap;
+  font-family:'JetBrains Mono',monospace;
+}
+
+.copy-btn{
+  background:var(--blue-bright);
+  border:none;
+  border-radius:8px;color:#fff;font-size:11px;font-weight:700;
+  font-family:'JetBrains Mono',monospace;padding:8px 16px;
+  cursor:pointer;transition:all .2s;white-space:nowrap;
+  letter-spacing:.05em;text-transform:uppercase;
+  box-shadow:0 2px 12px var(--blue-glow);
+}
+.copy-btn:hover{background:var(--blue-light);transform:translateY(-1px);box-shadow:0 4px 20px var(--blue-glow);}
+.copy-btn.copied{background:#22c55e;box-shadow:0 2px 12px #22c55e44;}
+
+.regen-btn{
+  align-self:stretch;
+  background:var(--navy-card);
+  border:1px solid var(--navy-border);
+  border-radius:10px;color:var(--blue-light);font-size:12px;font-weight:600;
+  font-family:'JetBrains Mono',monospace;padding:12px 18px;
+  cursor:pointer;transition:all .2s;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  letter-spacing:.04em;
+}
+.regen-btn:hover{
+  background:var(--blue-subtle);
+  border-color:var(--blue-bright)66;
+  color:var(--blue-bright);
+  transform:translateY(-1px);
+  box-shadow:0 4px 16px var(--blue-glow);
+}
+.regen-btn.spinning svg{animation:spin .7s linear infinite;}
+
+/* Result image thumbnails */
+.result-images{display:flex;gap:8px;flex-wrap:wrap;}
+.result-thumb{width:44px;height:44px;border-radius:8px;object-fit:cover;border:1px solid var(--navy-border);}
+
+/* Skeleton */
+.skeleton{
+  background:linear-gradient(90deg,var(--navy-panel) 25%,var(--navy-card) 50%,var(--navy-panel) 75%);
+  background-size:200% 100%;animation:shimmer 1.5s infinite;
+  border-radius:6px;height:12px;margin-bottom:8px;
+}
+.skeleton.wide{width:100%;}
+.skeleton.mid{width:72%;}
+.skeleton.short{width:42%;}
+
+/* ── STATUS BAR ── */
+.status-bar{
+  padding:8px 20px;
+  border-top:1px solid var(--navy-border);
+  display:flex;align-items:center;gap:8px;
+  background:var(--navy-dark);
+}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--success);}
+.status-text{font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;}
+
+.hidden{display:none!important;}
+
+/* Main sections gap */
+.main-sections{display:flex;flex-direction:column;gap:48px;}
+</style>
+</head>
+<body>
+
+<!-- Limit Wall -->
+<div id="limit-wall">
+  <div class="limit-card">
+    <span class="limit-icon">🐱</span>
+    <div class="limit-heading">You've used your 3 free generations</div>
+    <div class="limit-sub">Koppie-Kat is powered by DarkLoud Digital.</div>
+    <div class="limit-body">Want unlimited access for your store?<br/>Get in touch and we'll set you up.</div>
+    <a class="limit-cta" href="mailto:hello@darklouddigital.co.za">Contact DarkLoud Digital</a>
+  </div>
+</div>
+
+<!-- Main App -->
+<div id="app">
+  <header>
+    <div class="header-brand">
+      <div class="header-logo-mark">🐱</div>
+      <div class="header-name">Koppie-<span>Kat</span></div>
+      <span class="header-badge">AI</span>
+    </div>
+  </header>
+
+  <div class="main-sections">
+    <!-- STAGE 1: Image Upload (always visible) -->
+    <div>
+      <div class="section-header">
+        <div class="section-icon">📷</div>
+        <div class="section-title">Product Images</div>
+      </div>
+      <div class="upload-section">
+        <div class="image-grid" id="image-grid">
+          <div class="img-slot" id="slot-0" data-slot="0">
+            <input type="file" accept="image/*" class="slot-file-input"/>
+            <div class="slot-plus">+</div>
+            <span class="slot-label">drop or tap</span>
+            <img class="slot-preview" alt=""/>
+            <button class="slot-remove" title="Remove">×</button>
+            <span class="slot-num">01</span>
+          </div>
+          <div class="img-slot" id="slot-1" data-slot="1">
+            <input type="file" accept="image/*" class="slot-file-input"/>
+            <div class="slot-plus">+</div>
+            <span class="slot-label">drop or tap</span>
+            <img class="slot-preview" alt=""/>
+            <button class="slot-remove" title="Remove">×</button>
+            <span class="slot-num">02</span>
+          </div>
+          <div class="img-slot" id="slot-2" data-slot="2">
+            <input type="file" accept="image/*" class="slot-file-input"/>
+            <div class="slot-plus">+</div>
+            <span class="slot-label">drop or tap</span>
+            <img class="slot-preview" alt=""/>
+            <button class="slot-remove" title="Remove">×</button>
+            <span class="slot-num">03</span>
+          </div>
+        </div>
+        <div class="img-count-note" id="img-count-note">Add up to <span>3 photos</span> for richer copy</div>
+      </div>
+    </div>
+
+    <!-- STAGE 2: Voice Tone (hidden until image uploaded) -->
+    <div id="tone-section" class="reveal-section hidden-stage">
+      <div class="section-divider" style="margin:0 0 0;"></div>
+      <div class="section-header" style="padding-top:16px;">
+        <div class="section-icon">🎛️</div>
+        <div class="section-title">Voice Tone</div>
+      </div>
+      <div class="tone-grid">
+        <div class="tone-card tone-neutral" data-tone="neutral">
+          <div class="tone-indicator"></div>
+          <span class="tone-emoji-wrap">🧊</span>
+          <span class="tone-name">Neutral</span>
+          <span class="tone-desc">Clean. Clear. Confident.</span>
+        </div>
+        <div class="tone-card tone-highend" data-tone="highend">
+          <div class="tone-indicator"></div>
+          <span class="tone-emoji-wrap">✦</span>
+          <span class="tone-name">High End</span>
+          <span class="tone-desc">Refined. Editorial. Luxe.</span>
+        </div>
+        <div class="tone-card tone-fun" data-tone="fun">
+          <div class="tone-indicator"></div>
+          <span class="tone-emoji-wrap">🔥</span>
+          <span class="tone-name">Fun</span>
+          <span class="tone-desc">Punchy. Playful. Iconic.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAGE 3: Content Types (hidden until tone selected) -->
+    <div id="content-type-section" class="reveal-section hidden-stage">
+      <div class="section-divider" style="margin:0 0 0;"></div>
+      <div class="section-header" style="padding-top:16px;">
+        <div class="section-icon">📋</div>
+        <div class="section-title">Content Types</div>
+      </div>
+      <div class="content-grid">
+        <div class="content-card" data-content="instagram">
+          <div class="content-check">
+            <svg viewBox="0 0 10 8" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,4 3.5,6.5 9,1"/></svg>
+          </div>
+          <span class="content-emoji-wrap">📸</span>
+          <span class="content-name">Instagram</span>
+          <span class="content-sub">Carousel posts</span>
+        </div>
+        <div class="content-card" data-content="tiktok">
+          <div class="content-check">
+            <svg viewBox="0 0 10 8" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,4 3.5,6.5 9,1"/></svg>
+          </div>
+          <span class="content-emoji-wrap">🎵</span>
+          <span class="content-name">TikTok</span>
+          <span class="content-sub">Video scenes</span>
+        </div>
+        <div class="content-card" data-content="campaign">
+          <div class="content-check">
+            <svg viewBox="0 0 10 8" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,4 3.5,6.5 9,1"/></svg>
+          </div>
+          <span class="content-emoji-wrap">🚀</span>
+          <span class="content-name">Campaign</span>
+          <span class="content-sub">Full concept</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAGE 4: Generate Button (hidden until content type selected) -->
+    <div id="letsgo-wrap" class="reveal-section hidden-stage" style="padding:0 20px;">
+      <button id="letsgo-btn">
+        <div class="btn-spinner"></div>
+        <span class="btn-label">Generate Copy</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Empty State -->
+  <div id="empty-state">
+    <div class="empty-graphic">🐱</div>
+    <h2>Upload a product<br/>to get started</h2>
+    <p>We'll write everything.<br/>You just copy and post.</p>
+  </div>
+
+  <!-- Results -->
+  <div id="results">
+    <div class="result-images" id="result-images"></div>
+    <div id="tab-nav"></div>
+    <div id="panels-container"></div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────
+let images = [null, null, null];
+let selectedTone = null;
+let selectedContent = new Set();
+let generatedContent = {};
+
+// ── PROGRESSIVE REVEAL ─────────────────────────────────────────
+function revealSection(el) {
+  el.classList.remove('hidden-stage');
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      el.classList.add('revealed');
+    });
+  });
+}
+
+function hideSection(el) {
+  el.classList.remove('revealed');
+  setTimeout(() => { el.classList.add('hidden-stage'); }, 420);
+}
+
+// ── DRAG PREVENTION ────────────────────────────────────────────
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => e.preventDefault());
+
+// ── IMAGE SLOTS ────────────────────────────────────────────────
+document.querySelectorAll('.img-slot').forEach(slot => {
+  const idx = parseInt(slot.dataset.slot);
+  const input = slot.querySelector('.slot-file-input');
+  const removeBtn = slot.querySelector('.slot-remove');
+
+  input.addEventListener('change', function() {
+    if (this.files && this.files[0]) loadSlotImage(idx, this.files[0]);
+  });
+
+  removeBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    clearSlot(idx);
+  });
+
+  slot.addEventListener('dragenter', e => {
+    e.preventDefault();
+    if (!images[idx]) { slot.classList.add('dragover'); input.style.pointerEvents = 'none'; }
+  });
+  slot.addEventListener('dragover', e => {
+    e.preventDefault();
+    if (!images[idx]) slot.classList.add('dragover');
+  });
+  slot.addEventListener('dragleave', e => {
+    if (!slot.contains(e.relatedTarget)) { slot.classList.remove('dragover'); input.style.pointerEvents = ''; }
+  });
+  slot.addEventListener('drop', e => {
+    e.preventDefault();
+    slot.classList.remove('dragover');
+    input.style.pointerEvents = '';
+    if (images[idx]) return;
+    if (e.dataTransfer.files[0]) {
+      loadSlotImage(idx, e.dataTransfer.files[0]);
+    } else {
+      const url = extractDroppedImageUrl(e.dataTransfer);
+      if (url) loadSlotFromUrl(idx, url);
+    }
+  });
+});
+
+const imageGrid = document.getElementById('image-grid');
+imageGrid.addEventListener('dragenter', e => e.preventDefault());
+imageGrid.addEventListener('dragover', e => e.preventDefault());
+imageGrid.addEventListener('drop', e => {
+  e.preventDefault();
+  if (e.target.closest('.img-slot')) return;
+  if (e.dataTransfer.files.length) {
+    let fileIdx = 0;
+    for (let i = 0; i < 3 && fileIdx < e.dataTransfer.files.length; i++) {
+      if (!images[i]) { loadSlotImage(i, e.dataTransfer.files[fileIdx]); fileIdx++; }
+    }
+  } else {
+    const url = extractDroppedImageUrl(e.dataTransfer);
+    if (url) {
+      const firstEmpty = images.findIndex(img => !img);
+      if (firstEmpty !== -1) loadSlotFromUrl(firstEmpty, url);
+    }
+  }
+});
+
+function extractDroppedImageUrl(dataTransfer) {
+  const uriList = dataTransfer.getData('text/uri-list');
+  if (uriList && uriList.match(/^https?:\/\//i)) return uriList.trim();
+  const html = dataTransfer.getData('text/html');
+  if (html) {
+    const match = html.match(/<img[^>]+src=["']([^"']+)["']/i);
+    if (match && match[1] && match[1].match(/^https?:\/\//i)) return match[1];
+  }
+  const plain = dataTransfer.getData('text/plain');
+  if (plain && plain.match(/^https?:\/\//i)) return plain.trim();
+  return null;
+}
+
+function loadSlotFromUrl(idx, url) {
+  const slot = document.getElementById('slot-' + idx);
+  slot.querySelector('.slot-plus').textContent = '⏳';
+  slot.querySelector('.slot-label').textContent = 'loading...';
+  if (url.startsWith('blob:') || url.startsWith('data:')) {
+    fetch(url).then(r => r.blob()).then(blob => loadSlotImage(idx, blob)).catch(() => showSlotError(idx));
+    return;
+  }
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    canvas.getContext('2d').drawImage(img, 0, 0);
+    try {
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      images[idx] = { b64: dataUrl.split(',')[1], type: 'image/jpeg', src: dataUrl };
+      setSlotImage(idx, dataUrl);
+      updateUI();
+    } catch(err) {
+      fetch(url).then(r => r.blob()).then(blob => loadSlotImage(idx, blob)).catch(() => showSlotError(idx));
+    }
+  };
+  img.onerror = () => fetch(url).then(r => r.blob()).then(blob => loadSlotImage(idx, blob)).catch(() => showSlotError(idx));
+  img.src = url;
+}
+
+function showSlotError(idx) {
+  const slot = document.getElementById('slot-' + idx);
+  slot.querySelector('.slot-plus').textContent = '+';
+  slot.querySelector('.slot-label').textContent = 'drop or tap';
+  alert('This image is blocked by the source website.\nTry right-clicking → "Save image as" and uploading directly.');
+}
+
+function loadSlotImage(idx, file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const result = e.target.result;
+    images[idx] = { b64: result.split(',')[1], type: file.type, src: result };
+    setSlotImage(idx, result);
+    updateUI();
+  };
+  reader.readAsDataURL(file);
+}
+
+function setSlotImage(idx, src) {
+  const slot = document.getElementById('slot-' + idx);
+  const preview = slot.querySelector('.slot-preview');
+  preview.src = src;
+  preview.classList.add('visible');
+  const plus = slot.querySelector('.slot-plus');
+  if (plus) plus.style.display = 'none';
+  slot.querySelector('.slot-label').style.display = 'none';
+  slot.classList.add('has-image');
+  slot.querySelector('.slot-file-input').style.display = 'none';
+}
+
+function clearSlot(idx) {
+  images[idx] = null;
+  const slot = document.getElementById('slot-' + idx);
+  const preview = slot.querySelector('.slot-preview');
+  preview.src = '';
+  preview.classList.remove('visible');
+  const plus = slot.querySelector('.slot-plus');
+  if (plus) plus.style.display = '';
+  slot.querySelector('.slot-label').style.display = '';
+  slot.classList.remove('has-image');
+  slot.querySelector('.slot-file-input').style.display = '';
+  slot.querySelector('.slot-file-input').value = '';
+  updateUI();
+}
+
+function hasImages() { return images.some(img => img !== null); }
+
+// ── UI STATE MACHINE ───────────────────────────────────────────
+const toneSection = document.getElementById('tone-section');
+const contentTypeSection = document.getElementById('content-type-section');
+const letsgowrap = document.getElementById('letsgo-wrap');
+const emptyState = document.getElementById('empty-state');
+const countNote = document.getElementById('img-count-note');
+
+function updateUI() {
+  const anyImage = hasImages();
+
+  if (anyImage) {
+    emptyState.style.display = 'none';
+    const count = images.filter(Boolean).length;
+    countNote.innerHTML = `<span>${count} photo${count > 1 ? 's' : ''}</span> loaded — ${3 - count} slot${3 - count !== 1 ? 's' : ''} remaining`;
+    // Stage 2: reveal tone
+    if (toneSection.classList.contains('hidden-stage')) {
+      revealSection(toneSection);
+    }
+  } else {
+    emptyState.style.display = '';
+    countNote.innerHTML = `Add up to <span>3 photos</span> for richer copy`;
+    // Hide everything downstream
+    if (!toneSection.classList.contains('hidden-stage')) hideSection(toneSection);
+    if (!contentTypeSection.classList.contains('hidden-stage')) hideSection(contentTypeSection);
+    if (!letsgowrap.classList.contains('hidden-stage')) hideSection(letsgowrap);
+    selectedTone = null;
+    document.querySelectorAll('.tone-card').forEach(c => c.classList.remove('selected'));
+    selectedContent.clear();
+    document.querySelectorAll('.content-card').forEach(c => c.classList.remove('selected'));
+  }
+}
+
+// ── TONE CARDS ─────────────────────────────────────────────────
+document.querySelectorAll('.tone-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.tone-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    selectedTone = card.dataset.tone;
+    // Stage 3: reveal content types
+    if (contentTypeSection.classList.contains('hidden-stage')) {
+      revealSection(contentTypeSection);
+    }
+  });
+});
+
+// ── CONTENT TYPE CARDS ─────────────────────────────────────────
+document.querySelectorAll('.content-card').forEach(card => {
+  card.addEventListener('click', () => {
+    const type = card.dataset.content;
+    if (selectedContent.has(type)) {
+      selectedContent.delete(type);
+      card.classList.remove('selected');
+    } else {
+      selectedContent.add(type);
+      card.classList.add('selected');
+    }
+    // Stage 4: reveal generate button
+    if (selectedContent.size > 0) {
+      if (letsgowrap.classList.contains('hidden-stage')) {
+        revealSection(letsgowrap);
+      }
+    } else {
+      if (!letsgowrap.classList.contains('hidden-stage')) {
+        hideSection(letsgowrap);
+      }
+    }
+  });
+});
+
+// ── GENERATE ───────────────────────────────────────────────────
+document.getElementById('letsgo-btn').addEventListener('click', generateAll);
+
+async function generateAll() {
+  if (!hasImages() || !selectedTone || selectedContent.size === 0) return;
+  const btn = document.getElementById('letsgo-btn');
+  btn.classList.add('loading');
+  btn.disabled = true;
+  const contentCount = selectedContent.size;
+  btn.querySelector('.btn-label').textContent = `Generating ${contentCount + 1} sections...`;
+
+  generatedContent = {};
+  buildResultsTabs();
+
+  document.getElementById('empty-state').style.display = 'none';
+  const resultsEl = document.getElementById('results');
+  resultsEl.style.display = 'flex';
+
+  const thumbStrip = document.getElementById('result-images');
+  thumbStrip.innerHTML = images.filter(Boolean).map(img =>
+    `<img class="result-thumb" src="${img.src}" alt=""/>`
+  ).join('');
+
+  showSkeletons();
+
+  const sections = Array.from(selectedContent);
+  const toGenerate = ['description', ...sections];
+
+  await Promise.all(toGenerate.map(s => generateSection(s)));
+
+  btn.classList.remove('loading');
+  btn.disabled = false;
+  btn.querySelector('.btn-label').textContent = randomRegenLabel();
+}
+
+function buildResultsTabs() {
+  const nav = document.getElementById('tab-nav');
+  const panels = document.getElementById('panels-container');
+
+  const labels = {
+    description: ['📝', 'Description'],
+    instagram: ['📸', 'Instagram'],
+    tiktok: ['🎵', 'TikTok'],
+    campaign: ['🚀', 'Campaign'],
+  };
+
+  const tabs = ['description', ...Array.from(selectedContent)];
+
+  nav.innerHTML = tabs.map((t, i) =>
+    `<button class="tab-btn${i===0?' active':''}" data-tab="${t}">${labels[t][0]} ${labels[t][1]}</button>`
+  ).join('');
+
+  panels.innerHTML = tabs.map((t, i) =>
+    `<div class="content-panel${i===0?' active':''}" id="panel-${t}"></div>`
+  ).join('');
+
+  nav.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      nav.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      panels.querySelectorAll('.content-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+}
+
+function showSkeletons() {
+  const tabs = ['description', ...Array.from(selectedContent)];
+  tabs.forEach(tab => {
+    const panel = document.getElementById('panel-' + tab);
+    if (!panel) return;
+    panel.innerHTML = `
+      <div class="copy-card">
+        <div class="skeleton wide"></div>
+        <div class="skeleton mid"></div>
+        <div class="skeleton wide"></div>
+        <div class="skeleton short"></div>
+        <div class="skeleton wide"></div>
+        <div class="skeleton mid"></div>
+      </div>`;
+  });
+}
+
+const REGEN_LABELS = [
+  '⚡ Fire Again',
+  '🔁 Remix It',
+  '✨ Rewrite the Room',
+  '🚀 Hit Me Again',
+  '🎯 Another Round',
+  '💥 Shake It Up',
+  '🔥 Run It Back',
+  '⚡ Drop New Copy',
+  '✦ Regenerate All',
+  '🎲 Try Again',
+];
+
+function randomRegenLabel() {
+  return REGEN_LABELS[Math.floor(Math.random() * REGEN_LABELS.length)];
+}
+
+// ── PROMPTS ────────────────────────────────────────────────────
+const TONE_INSTRUCTIONS = {
+  neutral: `You are Koppie-Kat, an AI retail copy assistant. Write clean, confident, benefit-driven copy that works for any product — clothing, homewares, electronics, food, beauty, or anything in between. Professional but human. No corporate jargon, no empty hype. Let the product do the talking.`,
+  highend: `You are Koppie-Kat, an AI retail copy assistant specialising in premium product positioning. Write elevated, considered copy — evocative without being pretentious, aspirational without being unreachable. Every word justifies the price tag. Works for any premium product category.`,
+  fun: `You are Koppie-Kat, an AI retail copy assistant with genuine personality. Write copy that is warm, witty, and entertaining — the kind of product description people actually read to the end. Relatable energy, never try-hard. Works for cushions, candles, kitchen gear, clothing, or anything a real person would actually buy. Charming but never silly.`,
+};
+
+const PROMPTS = {
+  description: (tone) => `${TONE_INSTRUCTIONS[tone]}\n\nLook at the product image(s) carefully. Write a complete retail product description that includes:\n1. A bold product name/headline\n2. A one-liner hook\n3. A short intro paragraph (2-3 sentences)\n4. A "Why you need it" bullet list (5 bullets, each with an emoji)\n5. A use suggestion (how or where to use this product)\n6. A mood line (3 words max, e.g. "Bold. Unbothered. Iconic.")\n\nStay true to the tone throughout.`,
+  tiktok: (tone) => `${TONE_INSTRUCTIONS[tone]}\n\nLook at the product image(s) carefully. Write a complete TikTok video script that includes:\n1. A scroll-stopping hook (0-3 seconds)\n2. Beat drop moment with text overlays (3-8 seconds)\n3. Detail showcase middle section (8-20 seconds)\n4. Strong CTA outro (20-30 seconds)\n5. Suggested audio style\n6. 3 caption options`,
+  instagram: (tone) => `${TONE_INSTRUCTIONS[tone]}\n\nLook at the product image(s) carefully. Write a complete Instagram carousel post that includes:\n1. Slide 1 — Cover slide: bold headline\n2. Slide 2 — The detail slide: one key feature\n3. Slide 3 — The concept slide: bigger story\n4. Slide 4 — The use slide: how or where to use it\n5. Slide 5 — Close-up detail\n6. Slide 6 — CTA slide\n7. Full post caption with emojis\n8. Hashtag pack (20 hashtags)`,
+  campaign: (tone) => `${TONE_INSTRUCTIONS[tone]}\n\nLook at the product image(s) carefully. Write a complete campaign concept:\n1. Campaign name and tagline\n2. The Big Idea (2-3 sentences)\n3. Target audience (vivid description)\n4. Creative direction (mood, colours, aesthetic)\n5. Hero video concept (30-60 second outline)\n6. 3 social content series ideas\n7. Creator/influencer strategy (3 tiers)\n8. Launch timeline (6 weeks)\n9. 5 tagline variations\n10. 3 key success metrics`,
+};
+
+// ── API CALL ───────────────────────────────────────────────────
+async function generateSection(section, regen = false) {
+  const panel = document.getElementById('panel-' + section);
+  if (!panel) return;
+
+  if (regen) {
+    panel.innerHTML = `<div class="copy-card">
+      <div class="skeleton wide"></div><div class="skeleton mid"></div>
+      <div class="skeleton wide"></div><div class="skeleton short"></div>
+    </div>`;
+  }
+
+  try {
+    const response = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        section: section,
+        tone: selectedTone,
+        images: images.filter(Boolean).map(img => ({
+          type: img.type,
+          b64: img.b64
+        }))
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.limitReached) {
+      showLimitWall();
+      return;
+    }
+    if (data.error) throw new Error(data.error);
+    const text = data.text || 'Could not generate content.';
+    generatedContent[section] = text;
+    renderSection(section, text);
+  } catch(err) {
+    panel.innerHTML = `<div class="copy-card"><div class="copy-card-content" style="color:#ef4444;">⚠️ Error: ${escHtml(err.message)}</div></div>`;
+  }
+}
+
+function showLimitWall() {
+  document.getElementById('limit-wall').classList.add('visible');
+}
+
+function renderSection(section, text) {
+  const panel = document.getElementById('panel-' + section);
+  const labels = {
+    description: 'Product Description',
+    tiktok: 'TikTok Script',
+    instagram: 'Instagram Carousel',
+    campaign: 'Campaign Concept'
+  };
+
+  const toneBadgeClass = { neutral: 'badge-neutral', highend: 'badge-highend', fun: 'badge-fun' };
+  const toneLabels = { neutral: '🧊 Neutral', highend: '✦ High End', fun: '🔥 Fun' };
+
+  panel.innerHTML = `
+    <div class="copy-card">
+      <div class="copy-card-header">
+        <div class="copy-card-label">
+          ${labels[section]}
+          <span class="tone-badge ${toneBadgeClass[selectedTone]}">${toneLabels[selectedTone]}</span>
+        </div>
+        <button class="copy-btn" onclick="copyText(this, '${section}')">📋 Copy</button>
+      </div>
+      <div class="copy-card-content">${escHtml(text)}</div>
+    </div>
+    <button class="regen-btn" onclick="regenSection('${section}', this)">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+      ↺ Regenerate This Section
+    </button>`;
+}
+
+async function regenSection(section, btn) {
+  btn.classList.add('spinning');
+  btn.disabled = true;
+  await generateSection(section, true);
+  btn.classList.remove('spinning');
+  btn.disabled = false;
+}
+
+function copyText(btn, section) {
+  const text = generatedContent[section] || '';
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'copied ✓';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '📋 Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>
