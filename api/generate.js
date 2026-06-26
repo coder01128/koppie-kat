@@ -1,7 +1,5 @@
 import { Redis } from '@upstash/redis';
 
-export const config = { runtime: 'edge' };
-
 const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages';
 const LIMIT = 3;
 
@@ -28,7 +26,7 @@ const PROMPTS = {
   campaign: (tone) => `${TONE_INSTRUCTIONS[tone]}\n\nLook at the product image(s) carefully. Write a complete campaign concept:\n1. Campaign name and tagline\n2. The Big Idea (2-3 sentences)\n3. Target audience (vivid description)\n4. Creative direction (mood, colours, aesthetic)\n5. Hero video concept (30-60 second outline)\n6. 3 social content series ideas\n7. Creator/influencer strategy (3 tiers)\n8. Launch timeline (6 weeks)\n9. 5 tagline variations\n10. 3 key success metrics`,
 };
 
-export default async function handler(req) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
   }
