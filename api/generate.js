@@ -2,6 +2,11 @@ import { Redis } from '@upstash/redis';
 
 const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages';
 const LIMIT = 3;
+const MAX_IMAGES = 3;
+const MAX_B64_BYTES = 7 * 1024 * 1024; // ~5MB image
+const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+const VALID_SECTIONS = new Set(['description', 'instagram', 'tiktok', 'campaign']);
+const VALID_TONES = new Set(['neutral', 'highend', 'fun']);
 
 const redis = new Redis({
   url: process.env.KV_REST_API_URL,
@@ -39,17 +44,34 @@ export default async function handler(req, res) {
   const count = (await redis.get(key)) || 0;
 
   if (Number(count) >= LIMIT) {
-    return res.status(200).json({ limitReached: true });
+    return res.status(429).json({
+      error: 'rate_limit',
+      message: 'Free generations used up. Contact DarkLoud Digital for full access.',
+      remaining: 0,
+    });
   }
 
   const { section, tone, images } = req.body;
 
-  if (!section || !tone || !images?.length) {
+  if (!section || !tone || !Array.isArray(images) || images.length === 0) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  if (!PROMPTS[section] || !TONE_INSTRUCTIONS[tone]) {
+  if (!VALID_SECTIONS.has(section) || !VALID_TONES.has(tone)) {
     return res.status(400).json({ error: 'Invalid section or tone' });
+  }
+
+  if (images.length > MAX_IMAGES) {
+    return res.status(400).json({ error: 'Too many images' });
+  }
+
+  for (const img of images) {
+    if (!img.b64 || !img.type || !ALLOWED_MIME.has(img.type)) {
+      return res.status(400).json({ error: 'Invalid image type' });
+    }
+    if (img.b64.length > MAX_B64_BYTES) {
+      return res.status(400).json({ error: 'Image too large' });
+    }
   }
 
   const imageBlocks = images.map(img => ({
@@ -90,9 +112,10 @@ export default async function handler(req, res) {
       ?.map(b => b.text || '').join('')
       || 'Could not generate content.';
 
-    await redis.set(key, Number(count) + 1, { ex: 86400 });
+    const newCount = Number(count) + 1;
+    await redis.set(key, newCount, { ex: 86400 });
 
-    return res.status(200).json({ text });
+    return res.status(200).json({ text, remaining: LIMIT - newCount });
 
   } catch (err) {
     return res.status(500).json({ error: err.message });

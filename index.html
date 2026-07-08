@@ -591,6 +591,7 @@ header{
         <div class="btn-spinner"></div>
         <span class="btn-label">Generate Copy</span>
       </button>
+      <div id="remaining-info" class="hidden" style="text-align:center;margin-top:10px;font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;letter-spacing:.04em;"></div>
     </div>
   </div>
 
@@ -876,6 +877,7 @@ async function generateAll() {
   btn.querySelector('.btn-label').textContent = `Generating ${contentCount + 1} sections...`;
 
   generatedContent = {};
+  lowestRemaining = null;
   buildResultsTabs();
 
   document.getElementById('empty-state').style.display = 'none';
@@ -964,19 +966,23 @@ function randomRegenLabel() {
   return REGEN_LABELS[Math.floor(Math.random() * REGEN_LABELS.length)];
 }
 
-// ── PROMPTS ────────────────────────────────────────────────────
-const TONE_INSTRUCTIONS = {
-  neutral: `You are Koppie-Kat, an AI retail copy assistant. Write clean, confident, benefit-driven copy that works for any product — clothing, homewares, electronics, food, beauty, or anything in between. Professional but human. No corporate jargon, no empty hype. Let the product do the talking.`,
-  highend: `You are Koppie-Kat, an AI retail copy assistant specialising in premium product positioning. Write elevated, considered copy — evocative without being pretentious, aspirational without being unreachable. Every word justifies the price tag. Works for any premium product category.`,
-  fun: `You are Koppie-Kat, an AI retail copy assistant with genuine personality. Write copy that is warm, witty, and entertaining — the kind of product description people actually read to the end. Relatable energy, never try-hard. Works for cushions, candles, kitchen gear, clothing, or anything a real person would actually buy. Charming but never silly.`,
-};
+// ── REMAINING TRACKER ──────────────────────────────────────────
+let lowestRemaining = null;
 
-const PROMPTS = {
-  description: (tone) => `${TONE_INSTRUCTIONS[tone]}\n\nLook at the product image(s) carefully. Write a complete retail product description that includes:\n1. A bold product name/headline\n2. A one-liner hook\n3. A short intro paragraph (2-3 sentences)\n4. A "Why you need it" bullet list (5 bullets, each with an emoji)\n5. A use suggestion (how or where to use this product)\n6. A mood line (3 words max, e.g. "Bold. Unbothered. Iconic.")\n\nStay true to the tone throughout.`,
-  tiktok: (tone) => `${TONE_INSTRUCTIONS[tone]}\n\nLook at the product image(s) carefully. Write a complete TikTok video script that includes:\n1. A scroll-stopping hook (0-3 seconds)\n2. Beat drop moment with text overlays (3-8 seconds)\n3. Detail showcase middle section (8-20 seconds)\n4. Strong CTA outro (20-30 seconds)\n5. Suggested audio style\n6. 3 caption options`,
-  instagram: (tone) => `${TONE_INSTRUCTIONS[tone]}\n\nLook at the product image(s) carefully. Write a complete Instagram carousel post that includes:\n1. Slide 1 — Cover slide: bold headline\n2. Slide 2 — The detail slide: one key feature\n3. Slide 3 — The concept slide: bigger story\n4. Slide 4 — The use slide: how or where to use it\n5. Slide 5 — Close-up detail\n6. Slide 6 — CTA slide\n7. Full post caption with emojis\n8. Hashtag pack (20 hashtags)`,
-  campaign: (tone) => `${TONE_INSTRUCTIONS[tone]}\n\nLook at the product image(s) carefully. Write a complete campaign concept:\n1. Campaign name and tagline\n2. The Big Idea (2-3 sentences)\n3. Target audience (vivid description)\n4. Creative direction (mood, colours, aesthetic)\n5. Hero video concept (30-60 second outline)\n6. 3 social content series ideas\n7. Creator/influencer strategy (3 tiers)\n8. Launch timeline (6 weeks)\n9. 5 tagline variations\n10. 3 key success metrics`,
-};
+function updateRemainingDisplay(remaining) {
+  if (typeof remaining !== 'number') return;
+  if (lowestRemaining === null || remaining < lowestRemaining) {
+    lowestRemaining = remaining;
+  }
+  const el = document.getElementById('remaining-info');
+  if (!el) return;
+  el.classList.remove('hidden');
+  if (lowestRemaining <= 0) {
+    el.innerHTML = `<span style="color:var(--accent-pink);">0 free generations left</span>`;
+  } else {
+    el.innerHTML = `<span>${lowestRemaining} free generation${lowestRemaining !== 1 ? 's' : ''} remaining</span>`;
+  }
+}
 
 // ── API CALL ───────────────────────────────────────────────────
 async function generateSection(section, regen = false) {
@@ -1004,15 +1010,17 @@ async function generateSection(section, regen = false) {
       })
     });
 
-    const data = await response.json();
-
-    if (data.limitReached) {
+    if (response.status === 429) {
       showLimitWall();
       return;
     }
-    if (data.error) throw new Error(data.error);
+
+    const data = await response.json();
+
+    if (data.error) throw new Error(data.message || data.error);
     const text = data.text || 'Could not generate content.';
     generatedContent[section] = text;
+    updateRemainingDisplay(data.remaining);
     renderSection(section, text);
   } catch(err) {
     panel.innerHTML = `<div class="copy-card"><div class="copy-card-content" style="color:#ef4444;">⚠️ Error: ${escHtml(err.message)}</div></div>`;
