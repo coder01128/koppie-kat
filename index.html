@@ -113,8 +113,7 @@ header{
   display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;
 }
 .img-slot.has-image{
-  aspect-ratio:unset;
-  height:auto;
+  aspect-ratio:1;
   border-style:solid;border-color:var(--navy-border);cursor:default;
 }
 .img-slot:hover{border-color:var(--blue-bright)55;background:var(--blue-subtle);}
@@ -134,13 +133,11 @@ header{
 .img-slot:hover .slot-label{color:var(--blue-bright)66;}
 
 .slot-preview{
-  width:100%;
-  height:auto;
-  max-height:100%;
-  object-fit:contain;
+  position:absolute;inset:0;
+  width:100%;height:100%;
+  object-fit:cover;
   border-radius:10px;
   display:none;
-  padding:6px;
 }
 .slot-preview.visible{display:block;}
 
@@ -833,20 +830,6 @@ async function loadSampleImage() {
       images[0] = { b64: result.split(',')[1], type: 'image/png', src: result };
       setSlotImage(0, result);
       updateUI();
-
-      document.querySelectorAll('.tone-card').forEach(c => c.classList.remove('selected'));
-      document.querySelector('.tone-card[data-tone="neutral"]').classList.add('selected');
-      selectedTone = 'neutral';
-      if (contentTypeSection.classList.contains('hidden-stage')) revealSection(contentTypeSection);
-
-      selectedContent.clear();
-      document.querySelectorAll('.content-card').forEach(card => {
-        card.classList.add('selected');
-        selectedContent.add(card.dataset.content);
-      });
-      if (letsgowrap.classList.contains('hidden-stage')) revealSection(letsgowrap);
-
-      setTimeout(() => generateAll(), 600);
     };
     reader.readAsDataURL(blob);
   } catch (err) {
