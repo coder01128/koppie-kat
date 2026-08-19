@@ -1000,6 +1000,9 @@ async function generateSection(section, regen = false) {
     const text = data.text || 'Could not generate content.';
     generatedContent[section] = text;
     renderSection(section, text);
+    if (section === 'description') {
+      setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
+    }
   } catch(err) {
     panel.innerHTML = `<div class="copy-card"><div class="copy-card-content" style="color:#ef4444;">⚠️ Error: ${escHtml(err.message)}</div></div>`;
   }
