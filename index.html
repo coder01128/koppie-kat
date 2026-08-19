@@ -293,42 +293,6 @@ header{
 #letsgo-btn.loading .btn-spinner{display:block;}
 #letsgo-btn.loading .btn-label{opacity:.7;}
 
-/* ── LIMIT WALL ── */
-#limit-wall{
-  display:none;
-  position:fixed;inset:0;
-  background:rgba(15,10,6,.95);
-  z-index:50;
-  align-items:center;justify-content:center;
-  padding:24px;
-  backdrop-filter:blur(8px);
-}
-#limit-wall.visible{display:flex;}
-.limit-card{
-  width:100%;max-width:420px;
-  background:var(--navy-panel);
-  border:1px solid var(--navy-border);
-  border-radius:20px;
-  padding:40px 32px;
-  text-align:center;
-  box-shadow:0 0 80px #f9731618,0 24px 48px #00000066;
-  animation:fadeUp .4s ease-out;
-}
-.limit-icon{font-size:40px;margin-bottom:20px;display:block;}
-.limit-heading{font-size:22px;font-weight:800;color:var(--text-primary);letter-spacing:-.02em;margin-bottom:10px;}
-.limit-sub{font-size:13px;color:var(--blue-bright);font-family:'JetBrains Mono',monospace;margin-bottom:20px;letter-spacing:.04em;}
-.limit-body{font-size:13.5px;color:var(--text-secondary);line-height:1.8;margin-bottom:28px;}
-.limit-cta{
-  display:inline-block;
-  background:var(--blue-bright);
-  color:#fff;font-size:14px;font-weight:700;
-  font-family:'Outfit',sans-serif;letter-spacing:.04em;
-  padding:14px 28px;border-radius:10px;
-  text-decoration:none;
-  box-shadow:0 4px 24px var(--blue-glow);
-  transition:all .2s;
-}
-.limit-cta:hover{background:#ea6a0a;transform:translateY(-1px);}
 
 /* ── EMPTY STATE ── */
 #empty-state{
@@ -478,17 +442,6 @@ header{
 </head>
 <body>
 
-<!-- Limit Wall -->
-<div id="limit-wall">
-  <div class="limit-card">
-    <span class="limit-icon">🐱</span>
-    <div class="limit-heading">You've used your 3 free generations</div>
-    <div class="limit-sub">Koppie-Kat is powered by DarkLoud Digital.</div>
-    <div class="limit-body">Want unlimited access for your store?<br/>Get in touch and we'll set you up.</div>
-    <a class="limit-cta" href="mailto:hello@darklouddigital.co.za">Contact DarkLoud Digital</a>
-  </div>
-</div>
-
 <!-- Main App -->
 <div id="app">
   <header>
@@ -608,7 +561,6 @@ header{
         <div class="btn-spinner"></div>
         <span class="btn-label">Generate Copy</span>
       </button>
-      <div id="remaining-info" class="hidden" style="text-align:center;margin-top:10px;font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;letter-spacing:.04em;"></div>
     </div>
   </div>
 
@@ -925,7 +877,6 @@ async function generateAll() {
   btn.querySelector('.btn-label').textContent = `Generating ${contentCount + 1} sections...`;
 
   generatedContent = {};
-  lowestRemaining = null;
   buildResultsTabs();
 
   document.getElementById('empty-state').style.display = 'none';
@@ -1014,24 +965,6 @@ function randomRegenLabel() {
   return REGEN_LABELS[Math.floor(Math.random() * REGEN_LABELS.length)];
 }
 
-// ── REMAINING TRACKER ──────────────────────────────────────────
-let lowestRemaining = null;
-
-function updateRemainingDisplay(remaining) {
-  if (typeof remaining !== 'number') return;
-  if (lowestRemaining === null || remaining < lowestRemaining) {
-    lowestRemaining = remaining;
-  }
-  const el = document.getElementById('remaining-info');
-  if (!el) return;
-  el.classList.remove('hidden');
-  if (lowestRemaining <= 0) {
-    el.innerHTML = `<span style="color:var(--accent-pink);">0 free generations left</span>`;
-  } else {
-    el.innerHTML = `<span>${lowestRemaining} free generation${lowestRemaining !== 1 ? 's' : ''} remaining</span>`;
-  }
-}
-
 // ── API CALL ───────────────────────────────────────────────────
 async function generateSection(section, regen = false) {
   const panel = document.getElementById('panel-' + section);
@@ -1058,25 +991,15 @@ async function generateSection(section, regen = false) {
       })
     });
 
-    if (response.status === 429) {
-      showLimitWall();
-      return;
-    }
-
     const data = await response.json();
 
     if (data.error) throw new Error(data.message || data.error);
     const text = data.text || 'Could not generate content.';
     generatedContent[section] = text;
-    updateRemainingDisplay(data.remaining);
     renderSection(section, text);
   } catch(err) {
     panel.innerHTML = `<div class="copy-card"><div class="copy-card-content" style="color:#ef4444;">⚠️ Error: ${escHtml(err.message)}</div></div>`;
   }
-}
-
-function showLimitWall() {
-  document.getElementById('limit-wall').classList.add('visible');
 }
 
 function renderSection(section, text) {

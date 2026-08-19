@@ -1,17 +1,9 @@
-import { Redis } from '@upstash/redis';
-
 const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages';
-const LIMIT = 3;
 const MAX_IMAGES = 3;
 const MAX_B64_BYTES = 7 * 1024 * 1024; // ~5MB image
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 const VALID_SECTIONS = new Set(['description', 'instagram', 'tiktok', 'campaign']);
 const VALID_TONES = new Set(['neutral', 'highend', 'fun']);
-
-const redis = new Redis({
-  url: process.env.KV_REST_API_URL,
-  token: process.env.KV_REST_API_TOKEN,
-});
 
 const TONE_INSTRUCTIONS = {
   neutral: `You are Koppie-Kat, an AI retail copy assistant. Write clean, confident, benefit-driven copy that works for any product — clothing, homewares, electronics, food, beauty, or anything in between. Professional but human. No corporate jargon, no empty hype. Let the product do the talking.`,
@@ -34,21 +26,6 @@ const PROMPTS = {
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const ip = req.headers['x-forwarded-for']
-    || req.headers['cf-connecting-ip']
-    || 'unknown';
-
-  const key = `kk:${ip}`;
-  const count = (await redis.get(key)) || 0;
-
-  if (Number(count) >= LIMIT) {
-    return res.status(429).json({
-      error: 'rate_limit',
-      message: 'Free generations used up. Contact DarkLoud Digital for full access.',
-      remaining: 0,
-    });
   }
 
   const { section, tone, images } = req.body;
@@ -112,10 +89,7 @@ export default async function handler(req, res) {
       ?.map(b => b.text || '').join('')
       || 'Could not generate content.';
 
-    const newCount = Number(count) + 1;
-    await redis.set(key, newCount, { ex: 86400 });
-
-    return res.status(200).json({ text, remaining: LIMIT - newCount });
+    return res.status(200).json({ text });
 
   } catch (err) {
     return res.status(500).json({ error: err.message });
